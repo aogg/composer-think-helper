@@ -35,7 +35,7 @@ class Arr
      * @param mixed $value
      * @return bool
      */
-    product static function accessibleStdClass($value)
+    protected static function accessibleStdClass($value)
     {
         return is_object($value) || $value instanceof \stdClass;
     }
