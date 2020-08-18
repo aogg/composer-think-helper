@@ -1,12 +1,12 @@
 <?php
 // +----------------------------------------------------------------------
-// | ThinkPHP [ WE CAN DO IT JUST THINK IT ]
+// | aogg [ WE CAN DO IT JUST THINK IT ]
 // +----------------------------------------------------------------------
 // | Copyright (c) 2006-2015 http://thinkphp.cn All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +----------------------------------------------------------------------
-// | Author: yunwuxin <448901948@qq.com>
+// | Author: aogg <aogg@github.com>
 // +----------------------------------------------------------------------
 
 namespace think\helper;
@@ -27,6 +27,17 @@ class Arr
     public static function accessible($value)
     {
         return is_array($value) || $value instanceof ArrayAccess;
+    }
+    
+    /**
+     * 检测是否是stdClass
+     *
+     * @param mixed $value
+     * @return bool
+     */
+    product static function accessibleStdClass($value)
+    {
+        return is_object($value) || $value instanceof \stdClass;
     }
 
     /**
@@ -146,7 +157,7 @@ class Arr
     /**
      * Determine if the given key exists in the provided array.
      *
-     * @param \ArrayAccess|array $array
+     * @param \ArrayAccess|\stdClass|array $array
      * @param string|int         $key
      * @return bool
      */
@@ -154,6 +165,8 @@ class Arr
     {
         if ($array instanceof ArrayAccess) {
             return $array->offsetExists($key);
+        }else if($array instanceof \stdClass){
+            return isset($array->$key);
         }
 
         return array_key_exists($key, $array);
@@ -285,15 +298,22 @@ class Arr
      */
     public static function get($array, $key, $default = null)
     {
-        if (!static::accessible($array)) {
+        $stdClassBool = false;
+        if (static::accessibleStdClass($array)){
+            $stdClassBool = true;
+        }else if (!static::accessible($array)) {
             return value($default);
         }
 
         if (is_null($key)) {
             return $array;
         }
+        
+        if ($stdClassBool){
+            $array = (array)$array;
+        }
 
-        if (static::exists($array, $key)) {
+        if (static::exists($array, $key)) {            
             return $array[$key];
         }
 
@@ -335,7 +355,9 @@ class Arr
             }
 
             foreach (explode('.', $key) as $segment) {
-                if (static::accessible($subKeyArray) && static::exists($subKeyArray, $segment)) {
+                if (static::accessibleStdClass($subKeyArray) && isset($subKeyArray->$segment)){
+                    $subKeyArray = $subKeyArray->$segment;
+                }else if (static::accessible($subKeyArray) && static::exists($subKeyArray, $segment)) {
                     $subKeyArray = $subKeyArray[$segment];
                 } else {
                     return false;
@@ -525,14 +547,25 @@ class Arr
             // If the key doesn't exist at this depth, we will just create an empty array
             // to hold the next value, allowing us to create the arrays to hold final
             // values at the correct depth. Then we'll keep digging into the array.
-            if (!isset($array[$key]) || !is_array($array[$key])) {
+            if ($stdClassBool = static::accessibleStdClass($array)){
+                $array->$key = new \stdClass;
+            }else if (!isset($array[$key]) || !is_array($array[$key])) {
                 $array[$key] = [];
             }
 
-            $array = &$array[$key];
+            if ($stdClassBool){
+                $array = $array->$key;
+            }else{
+                $array = &$array[$key];
+            }
         }
 
-        $array[array_shift($keys)] = $value;
+        if (static::accessibleStdClass($array)){
+            $keys = array_shift($keys);
+            $array->$keys = $value;
+        }else{
+            $array[array_shift($keys)] = $value;
+        }
 
         return $array;
     }
