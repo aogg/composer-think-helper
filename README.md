@@ -3,6 +3,8 @@
 
 
 
+## 在\think\helper的基础上增加
+> 1、对 **\stdClass** 的支持，这样model中定义的json也能使用 **\aogg\think\helper\Arr::get($json, '')** 获取到数据  
 
 
 
