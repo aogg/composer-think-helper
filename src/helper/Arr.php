@@ -9,7 +9,7 @@
 // | Author: aogg <aogg@github.com>
 // +----------------------------------------------------------------------
 
-namespace think\helper;
+namespace aogg\think\helper;
 
 use ArrayAccess;
 use InvalidArgumentException;
