@@ -1,3 +1,14 @@
+# 扩展数组和字符串类库
+> 可参数文档地址：https://www.kancloud.cn/manual/thinkphp6_0/1149630
+
+
+
+
+
+
+
+
+
 # thinkphp6 常用的一些扩展类库
 
 基于PHP7.1+
@@ -9,6 +20,8 @@
 > 字符串操作
 
 ```
+use think\\helper\\Str;
+
 // 检查字符串中是否包含某些字符串
 Str::contains($haystack, $needles)
 
@@ -29,5 +42,17 @@ Str::length($value)
 
 // 截取字符串
 Str::substr($string, $start, $length = null)
+
+//驼峰转下划线
+Str::snake($value, $delimiter  =  '_')
+
+//下划线转驼峰(首字母小写)
+Str::camel($value)
+
+//下划线转驼峰(首字母大写)
+Str::studly
+
+//转为首字母大写的标题格式
+Str::title($value)
 
 ```
