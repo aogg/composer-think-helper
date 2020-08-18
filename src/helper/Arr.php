@@ -37,7 +37,7 @@ class Arr
      */
     protected static function accessibleStdClass($value)
     {
-        return is_object($value) || $value instanceof \stdClass;
+        return is_object($value) && $value instanceof \stdClass;
     }
 
     /**
