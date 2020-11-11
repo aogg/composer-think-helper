@@ -28,17 +28,6 @@ class Arr
     {
         return is_array($value) || $value instanceof ArrayAccess;
     }
-    
-    /**
-     * 检测是否是stdClass
-     *
-     * @param mixed $value
-     * @return bool
-     */
-    protected static function accessibleStdClass($value)
-    {
-        return is_object($value) && $value instanceof \stdClass;
-    }
 
     /**
      * Add an element to an array using "dot" notation if it doesn't exist.
@@ -165,7 +154,7 @@ class Arr
     {
         if ($array instanceof ArrayAccess) {
             return $array->offsetExists($key);
-        }else if($array instanceof \stdClass){
+        }else if(is_object($array)){
             return isset($array->$key);
         }
 
@@ -298,35 +287,60 @@ class Arr
      */
     public static function get($array, $key, $default = null)
     {
-        $stdClassBool = false;
-        if (static::accessibleStdClass($array)){
-            $stdClassBool = true;
-        }else if (!static::accessible($array)) {
+        if (!static::accessible($array) && !is_object($array)) {
             return value($default);
         }
 
         if (is_null($key)) {
             return $array;
         }
-        
-        if ($stdClassBool){
-            $array = (array)$array;
+
+
+        if (static::exists($array, $key)) {
+            $data = (array)$array;
+            return $data[$key];
         }
 
-        if (static::exists($array, $key)) {            
-            return $array[$key];
-        }
+
+        $handleObjectFunc = function ($segmentString, &$array)use($default){
+            $segmentArr = preg_split('/\s*->\s*/', $segmentString);
+            $methodBool = count($segmentArr) > 1;
+            $methodFirstHandleBool = false;
+
+            foreach ($segmentArr as $segment) {
+                if ($methodBool && $methodFirstHandleBool){
+                    if (is_callable([$array, $segment])){ // 是调用方法，公有方法
+                        // 暂时不支持参数和括号，后续兼容无括号
+
+                        $array = $array->$segment();
+                    }else{
+                        return true;
+                    }
+                }else if (static::accessible($array) && static::exists($array, $segment)) {
+                    $methodFirstHandleBool = true;
+                    $array = $array[$segment];
+                } else if (is_object($array) && static::exists($array, $segment)){
+                    $methodFirstHandleBool = true;
+                    $array = $array->$segment;
+                } else {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
 
         if (strpos($key, '.') === false) {
+            if (strpos($key, '->') !== false) { // 只有对象调用，暂时不支持第一级就是方法
+                return $handleObjectFunc($key, $array) ? value($default) : $array;
+            }
+
             return $array[$key] ?? value($default);
         }
 
-        foreach (explode('.', $key) as $segment) {
-            if (static::accessibleStdClass($array) && static::exists($array, $segment)){
-                $array = $array->$segment;
-            } else if (static::accessible($array) && static::exists($array, $segment)) {
-                $array = $array[$segment];
-            } else {
+        foreach (explode('.', $key) as $segmentString) {
+            if ($handleObjectFunc($segmentString, $array)) {
                 return value($default);
             }
         }
@@ -357,11 +371,11 @@ class Arr
             }
 
             foreach (explode('.', $key) as $segment) {
-                if (static::accessibleStdClass($subKeyArray) && isset($subKeyArray->$segment)){
-                    $subKeyArray = $subKeyArray->$segment;
-                }else if (static::accessible($subKeyArray) && static::exists($subKeyArray, $segment)) {
+                if (static::accessible($subKeyArray) && static::exists($subKeyArray, $segment)) {
                     $subKeyArray = $subKeyArray[$segment];
-                } else {
+                } else if (is_object($subKeyArray) && isset($subKeyArray->$segment)){
+                    $subKeyArray = $subKeyArray->$segment;
+                }else {
                     return false;
                 }
             }
@@ -549,7 +563,7 @@ class Arr
             // If the key doesn't exist at this depth, we will just create an empty array
             // to hold the next value, allowing us to create the arrays to hold final
             // values at the correct depth. Then we'll keep digging into the array.
-            if ($stdClassBool = static::accessibleStdClass($array)){
+            if ($stdClassBool = !static::accessible($array) && is_object($array)){
                 $array->$key = new \stdClass;
             }else if (!isset($array[$key]) || !is_array($array[$key])) {
                 $array[$key] = [];
@@ -562,7 +576,7 @@ class Arr
             }
         }
 
-        if (static::accessibleStdClass($array)){
+        if (!static::accessible($array) && is_object($array)){
             $keys = array_shift($keys);
             $array->$keys = $value;
         }else{
